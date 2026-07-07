@@ -1,0 +1,76 @@
+// Carta — Menú digital QR para restaurantes colombianos.
+// Toda tabla de datos de negocio lleva businessId; las queries SIEMPRE
+// se filtran por businessId en la capa de servicios (src/server/services).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Business {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  logoUrl     String?
+  heroUrl     String?
+  whatsapp    String?
+  accentColor String   @default("#d4a853")
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  users      User[]
+  categories Category[]
+  dishes     Dish[]
+}
+
+enum Role {
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(ADMIN)
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id         String   @id @default(cuid())
+  name       String
+  sortOrder  Int      @default(0)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  dishes Dish[]
+
+  @@unique([businessId, name])
+}
+
+model Dish {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Int
+  imageUrl    String?
+  tags        String[]  @default([])
+  soldOut     Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  active      Boolean   @default(true)
+  businessId  String
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([businessId, active])
+  @@index([businessId, categoryId])
+}
