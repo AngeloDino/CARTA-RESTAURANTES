@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
-import type { MenuData } from "@/lib/types";
+import { useState, useRef, useCallback, useEffect, type CSSProperties } from "react";
+import type { MenuData, DishDTO } from "@/lib/types";
+import type { MenuFont } from "@/lib/validations";
 import { formatCOP } from "@/lib/format";
+import { hexToRgbTriplet, isLightColor } from "@/lib/color";
 
 interface Props {
   data: MenuData;
@@ -15,7 +17,22 @@ interface CartItem {
   quantity: number;
 }
 
-function DishImage({ src, name }: { src: string | null; name: string }) {
+const FONT_STACKS: Record<MenuFont, string> = {
+  serif: '"Playfair Display", Georgia, serif',
+  sans: '"Inter", -apple-system, "Segoe UI", Roboto, sans-serif',
+  rounded: '"Poppins", "Inter", sans-serif',
+};
+
+// Sobreescriben las variables de globals.css solo dentro de la carta pública.
+const LIGHT_THEME_VARS = {
+  "--c-bg": "250 247 242",
+  "--c-surface": "255 255 255",
+  "--c-ink": "38 32 25",
+  "--c-muted": "128 118 104",
+  "--c-line": "229 221 208",
+};
+
+function DishImage({ src, name, light }: { src: string | null; name: string; light: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const gradientSeed = name
     .split("")
@@ -39,15 +56,16 @@ function DishImage({ src, name }: { src: string | null; name: string }) {
   }
 
   const hue = gradientSeed % 360;
+  const gradient = light
+    ? `linear-gradient(135deg, hsl(${hue}, 35%, 90%), hsl(${(hue + 60) % 360}, 30%, 82%))`
+    : `linear-gradient(135deg, hsl(${hue}, 30%, 20%), hsl(${(hue + 60) % 360}, 25%, 15%))`;
   return (
     <div
       className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-2xl"
-      style={{
-        background: `linear-gradient(135deg, hsl(${hue}, 30%, 20%), hsl(${(hue + 60) % 360}, 25%, 15%))`,
-      }}
+      style={{ background: gradient }}
     >
       <svg
-        className="h-16 w-16 text-white/20"
+        className={`h-16 w-16 ${light ? "text-black/15" : "text-white/20"}`}
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -82,12 +100,64 @@ function TagBadge({ tag }: { tag: string }) {
   );
 }
 
+function QtyControls({
+  qty,
+  soldOut,
+  onAdd,
+  onChange,
+}: {
+  qty: number;
+  soldOut: boolean;
+  onAdd: () => void;
+  onChange: (delta: number) => void;
+}) {
+  if (qty > 0) {
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-surface px-3 py-1.5">
+        <button
+          onClick={() => onChange(-1)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold text-muted hover:bg-line hover:text-ink"
+        >
+          −
+        </button>
+        <span className="min-w-[1.5rem] text-center font-semibold text-ink">{qty}</span>
+        <button
+          onClick={() => onChange(1)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold text-muted hover:bg-line hover:text-ink"
+        >
+          +
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={onAdd}
+      disabled={soldOut}
+      className="rounded-xl bg-brand/20 px-4 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand/30 disabled:opacity-0"
+    >
+      Agregar
+    </button>
+  );
+}
+
 export function PublicMenu({ data }: Props) {
   const { business, categories } = data;
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState(categories[0]?.id ?? "");
   const categoryRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  const activeColor = business.accentColor || "#d4a853";
+  const isLightTheme = business.theme === "light";
+  const compact = business.layoutStyle === "list";
+
+  const themeStyle = {
+    ...(isLightTheme ? LIGHT_THEME_VARS : {}),
+    "--c-brand": hexToRgbTriplet(activeColor) ?? "212 168 83",
+    "--c-brand-ink": isLightColor(activeColor) ? "24 22 18" : "255 255 255",
+    "--font-display": FONT_STACKS[business.fontStyle],
+  } as CSSProperties;
 
   const setCategoryRef = useCallback((id: string, el: HTMLDivElement | null) => {
     if (el) {
@@ -146,7 +216,6 @@ export function PublicMenu({ data }: Props) {
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const activeColor = business.accentColor || "#d4a853";
 
   function handleWhatsAppOrder() {
     if (!business.whatsapp || totalItems === 0) return;
@@ -172,8 +241,129 @@ export function PublicMenu({ data }: Props) {
     }
   }
 
+  function renderGridCard(dish: DishDTO, dishIdx: number) {
+    const qty = getItemQty(dish.id);
+    return (
+      <div
+        key={dish.id}
+        className={`animate-fade-in-up rounded-2xl border bg-surface/80 transition-all duration-300 ${
+          dish.soldOut
+            ? "border-line/40 opacity-50"
+            : "border-line hover:border-brand/40"
+        }`}
+        style={{
+          animationDelay: `${(dishIdx % 4) * 100}ms`,
+        }}
+      >
+        <div className="relative">
+          <DishImage src={dish.imageUrl} name={dish.name} light={isLightTheme} />
+          {dish.soldOut && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50">
+              <span className="rounded-full bg-surface/90 px-4 py-1.5 text-sm font-bold text-muted backdrop-blur-sm">
+                Agotado hoy
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="space-y-2 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-lg font-semibold leading-tight text-ink">
+              {dish.name}
+            </h3>
+            <span
+              className="shrink-0 text-lg font-bold"
+              style={{ color: activeColor }}
+            >
+              {formatCOP(dish.price)}
+            </span>
+          </div>
+          {dish.description && (
+            <p className="text-sm leading-relaxed text-muted">
+              {dish.description}
+            </p>
+          )}
+          {dish.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {dish.tags.map((tag) => (
+                <TagBadge key={tag} tag={tag} />
+              ))}
+            </div>
+          )}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <QtyControls
+              qty={qty}
+              soldOut={dish.soldOut}
+              onAdd={() => addToCart(dish)}
+              onChange={(delta) => updateQty(dish.id, delta)}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderListCard(dish: DishDTO, dishIdx: number) {
+    const qty = getItemQty(dish.id);
+    return (
+      <div
+        key={dish.id}
+        className={`animate-fade-in-up flex gap-3 rounded-2xl border bg-surface/80 p-3 transition-all duration-300 ${
+          dish.soldOut
+            ? "border-line/40 opacity-50"
+            : "border-line hover:border-brand/40"
+        }`}
+        style={{
+          animationDelay: `${(dishIdx % 6) * 60}ms`,
+        }}
+      >
+        {dish.imageUrl && (
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-surface">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={dish.imageUrl}
+              alt={dish.name}
+              loading="lazy"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold leading-tight text-ink">{dish.name}</h3>
+            <span
+              className="shrink-0 font-bold"
+              style={{ color: activeColor }}
+            >
+              {formatCOP(dish.price)}
+            </span>
+          </div>
+          {dish.description && (
+            <p className="mt-0.5 text-sm leading-snug text-muted line-clamp-2">
+              {dish.description}
+            </p>
+          )}
+          <div className="mt-1.5 flex items-end justify-between gap-2">
+            <div className="flex flex-wrap gap-1.5">
+              {dish.soldOut ? (
+                <span className="text-xs font-bold text-danger">Agotado hoy</span>
+              ) : (
+                dish.tags.map((tag) => <TagBadge key={tag} tag={tag} />)
+              )}
+            </div>
+            <QtyControls
+              qty={qty}
+              soldOut={dish.soldOut}
+              onAdd={() => addToCart(dish)}
+              onChange={(delta) => updateQty(dish.id, delta)}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-dvh bg-bg">
+    <div className="min-h-dvh bg-bg text-ink" style={themeStyle}>
       {/* Hero */}
       <div className="relative">
         {business.heroUrl ? (
@@ -193,7 +383,9 @@ export function PublicMenu({ data }: Props) {
           <div
             className="flex h-56 items-end md:h-72"
             style={{
-              background: `linear-gradient(135deg, #1a1a20, #2a2520)`,
+              background: isLightTheme
+                ? "linear-gradient(135deg, #f0e9dd, #e5d8c3)"
+                : "linear-gradient(135deg, #1a1a20, #2a2520)",
             }}
           />
         )}
@@ -216,11 +408,16 @@ export function PublicMenu({ data }: Props) {
             </div>
           )}
           <h1
-            className="mt-4 text-center font-serif text-3xl font-bold tracking-tight"
+            className="mt-4 text-center font-display text-3xl font-bold tracking-tight"
             style={{ color: activeColor }}
           >
             {business.name}
           </h1>
+          {business.tagline && (
+            <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted">
+              {business.tagline}
+            </p>
+          )}
         </div>
       </div>
 
@@ -244,8 +441,8 @@ export function PublicMenu({ data }: Props) {
       </div>
 
       {/* Dishes by Category */}
-      <div className="px-4 pb-36 pt-2">
-        {categories.map((cat, catIdx) => (
+      <div className="px-4 pb-8 pt-2">
+        {categories.map((cat) => (
           <div
             key={cat.id}
             id={`cat-${cat.id}`}
@@ -253,99 +450,27 @@ export function PublicMenu({ data }: Props) {
             className="scroll-mt-28"
           >
             <h2
-              className="mb-4 mt-6 font-serif text-2xl font-semibold"
+              className="mb-4 mt-6 font-display text-2xl font-semibold"
               style={{ color: activeColor }}
             >
               {cat.name}
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {cat.dishes.map((dish, dishIdx) => {
-                const qty = getItemQty(dish.id);
-                return (
-                  <div
-                    key={dish.id}
-                    className={`animate-fade-in-up rounded-2xl border bg-surface/80 transition-all duration-300 ${
-                      dish.soldOut
-                        ? "border-line/40 opacity-50"
-                        : "border-line hover:border-brand/40"
-                    }`}
-                    style={{
-                      animationDelay: `${(dishIdx % 4) * 100}ms`,
-                    }}
-                  >
-                    <div className="relative">
-                      <DishImage src={dish.imageUrl} name={dish.name} />
-                      {dish.soldOut && (
-                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50">
-                          <span className="rounded-full bg-surface/90 px-4 py-1.5 text-sm font-bold text-muted backdrop-blur-sm">
-                            Agotado hoy
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-2 p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-lg font-semibold leading-tight text-ink">
-                          {dish.name}
-                        </h3>
-                        <span
-                          className="shrink-0 text-lg font-bold"
-                          style={{ color: activeColor }}
-                        >
-                          {formatCOP(dish.price)}
-                        </span>
-                      </div>
-                      {dish.description && (
-                        <p className="text-sm leading-relaxed text-muted">
-                          {dish.description}
-                        </p>
-                      )}
-                      {dish.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {dish.tags.map((tag) => (
-                            <TagBadge key={tag} tag={tag} />
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Quantity Selector */}
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        {qty > 0 ? (
-                          <div className="flex items-center gap-3 rounded-xl bg-surface px-3 py-1.5">
-                            <button
-                              onClick={() => updateQty(dish.id, -1)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold text-muted hover:bg-line hover:text-ink"
-                            >
-                              −
-                            </button>
-                            <span className="min-w-[1.5rem] text-center font-semibold text-ink">
-                              {qty}
-                            </span>
-                            <button
-                              onClick={() => updateQty(dish.id, 1)}
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-lg font-bold text-muted hover:bg-line hover:text-ink"
-                            >
-                              +
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => addToCart(dish)}
-                            disabled={dish.soldOut}
-                            className="rounded-xl bg-brand/20 px-4 py-1.5 text-sm font-semibold text-brand transition-colors hover:bg-brand/30 disabled:opacity-0"
-                          >
-                            Agregar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className={compact ? "space-y-2.5" : "grid gap-4 sm:grid-cols-2"}>
+              {cat.dishes.map((dish, dishIdx) =>
+                compact ? renderListCard(dish, dishIdx) : renderGridCard(dish, dishIdx)
+              )}
             </div>
           </div>
         ))}
       </div>
+
+      {/* Footer */}
+      <footer className="mx-4 border-t border-line pb-32 pt-6 text-center">
+        <p className="text-xs text-muted">
+          Carta digital desarrollada por{" "}
+          <span className="font-semibold text-ink">New Tech Industries</span>
+        </p>
+      </footer>
 
       {/* Floating WhatsApp Button */}
       {totalItems > 0 && business.whatsapp && (

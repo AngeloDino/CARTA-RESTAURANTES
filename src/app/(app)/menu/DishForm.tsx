@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DishDTO, CategoryDTO } from "@/lib/types";
 import { formatCOP } from "@/lib/format";
+import { ImageUpload } from "@/components/ImageUpload";
 
 interface Props {
   dish: DishDTO | null;
@@ -17,6 +18,7 @@ export function DishForm({ dish, categories, onSave, onClose }: Props) {
   const [priceText, setPriceText] = useState(dish ? formatCOP(dish.price).replace("$", "") : "");
   const [categoryId, setCategoryId] = useState(dish?.categoryId ?? "");
   const [tags, setTags] = useState(dish?.tags.join(", ") ?? "");
+  const [imageUrl, setImageUrl] = useState(dish?.imageUrl ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -54,9 +56,7 @@ export function DishForm({ dish, categories, onSave, onClose }: Props) {
       price,
       categoryId,
       tags: tagList,
-      // El formulario aún no permite editar la foto; se reenvía la existente
-      // para que updateDish no la borre al guardar.
-      imageUrl: dish?.imageUrl ?? "",
+      imageUrl,
     };
 
     try {
@@ -103,6 +103,13 @@ export function DishForm({ dish, categories, onSave, onClose }: Props) {
             <label className="label">Nombre del plato</label>
             <input className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej: Bandeja paisa" required />
           </div>
+
+          <ImageUpload
+            label="Foto del plato"
+            value={imageUrl}
+            onChange={setImageUrl}
+            hint="Opcional. Se comprime automáticamente."
+          />
 
           <div>
             <label className="label">Descripción</label>

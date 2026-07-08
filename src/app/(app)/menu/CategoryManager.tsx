@@ -39,6 +39,7 @@ export function CategoryManager({ categories: initial, onUpdate, onClose }: Prop
   }
 
   async function handleUpdate(id: string, name: string) {
+    setError("");
     try {
       const res = await fetch(`/api/categories/${id}`, {
         method: "PUT",
@@ -51,6 +52,8 @@ export function CategoryManager({ categories: initial, onUpdate, onClose }: Prop
           prev.map((c) => (c.id === id ? { ...c, name } : c))
         );
         setEditing(null);
+      } else {
+        setError(data.message ?? "Error al actualizar");
       }
     } catch {
       setError("Error al actualizar");

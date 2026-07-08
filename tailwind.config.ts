@@ -8,6 +8,7 @@ const config: Config = {
       fontFamily: {
         serif: ["Playfair Display", "Georgia", "serif"],
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        display: ["var(--font-display)"],
       },
       colors: {
         bg: "rgb(var(--c-bg) / <alpha-value>)",

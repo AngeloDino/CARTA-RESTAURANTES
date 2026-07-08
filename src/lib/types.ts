@@ -1,11 +1,20 @@
-export interface BusinessDTO {
+import type { MenuTheme, MenuFont, MenuLayout } from "./validations";
+
+export interface MenuAppearance {
+  accentColor: string;
+  theme: MenuTheme;
+  fontStyle: MenuFont;
+  layoutStyle: MenuLayout;
+  tagline: string | null;
+}
+
+export interface BusinessDTO extends MenuAppearance {
   id: string;
   name: string;
   slug: string;
   logoUrl: string | null;
   heroUrl: string | null;
   whatsapp: string | null;
-  accentColor: string;
   isDemo: boolean;
 }
 
@@ -29,13 +38,12 @@ export interface DishDTO {
 }
 
 export interface MenuData {
-  business: {
+  business: MenuAppearance & {
     name: string;
     slug: string;
     logoUrl: string | null;
     heroUrl: string | null;
     whatsapp: string | null;
-    accentColor: string;
   };
   categories: {
     id: string;

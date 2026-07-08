@@ -2,6 +2,7 @@ export const DEMO_EMAIL = "demo@carta.co";
 export const DEMO_PASSWORD = "demo1234";
 export const DEMO_BUSINESS_NAME = "Sabor Cafetero (Demo)";
 export const DEMO_SLUG = "sabor-cafetero";
+export const DEMO_TAGLINE = "Cocina tradicional del Eje Cafetero, hecha con amor";
 
 export interface DemoDish {
   name: string;

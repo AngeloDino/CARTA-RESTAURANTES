@@ -2,9 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 
 :root {
+  /* Tipografía de títulos de la carta pública; cada negocio puede cambiarla. */
+  --font-display: "Playfair Display", Georgia, serif;
   --c-bg: 18 18 22;
   --c-surface: 28 28 34;
   --c-ink: 245 240 235;

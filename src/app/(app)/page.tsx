@@ -2,8 +2,8 @@ import { requireSession } from "@/server/auth";
 import { getBusiness } from "@/server/services/business";
 import { listDishes } from "@/server/services/dishes";
 import { listCategories } from "@/server/services/categories";
-import { formatCOP } from "@/lib/format";
 import Link from "next/link";
+import { PublicLinkCard } from "@/components/PublicLinkCard";
 
 export default async function DashboardPage() {
   const { businessId } = await requireSession();
@@ -15,7 +15,6 @@ export default async function DashboardPage() {
 
   const soldOutCount = dishes.filter((d) => d.soldOut).length;
   const totalDishes = dishes.length;
-  const whatsapp = business?.whatsapp;
 
   return (
     <div className="space-y-6">
@@ -60,24 +59,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* WhatsApp Link */}
-      {whatsapp && (
-        <div className="card space-y-2">
-          <h2 className="text-sm font-semibold text-muted">Tu menú público</h2>
-          <p className="text-sm text-ink">
-            Comparte este enlace con tus clientes:
-          </p>
-          <a
-            href={`/menu/${business?.slug}`}
-            target="_blank"
-            className="block break-all rounded-xl bg-brand/10 px-3 py-2 text-sm font-medium text-brand"
-          >
-            {typeof window !== "undefined"
-              ? `${window.location.origin}/menu/${business?.slug}`
-              : `/menu/${business?.slug}`}
-          </a>
-        </div>
-      )}
+      {business && <PublicLinkCard slug={business.slug} />}
     </div>
   );
 }

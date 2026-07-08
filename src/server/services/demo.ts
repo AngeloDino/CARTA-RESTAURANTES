@@ -5,11 +5,25 @@ import {
   DEMO_SLUG,
   DEMO_EMAIL,
   DEMO_PASSWORD,
+  DEMO_TAGLINE,
   DEMO_CATEGORIES,
   DEMO_DISHES,
 } from "../demo-data";
 
 type Db = PrismaClient | Prisma.TransactionClient;
+
+// Estado al que vuelve el negocio demo en cada reinicio.
+const DEMO_BUSINESS_STATE = {
+  name: DEMO_BUSINESS_NAME,
+  whatsapp: "573001234567",
+  tagline: DEMO_TAGLINE,
+  accentColor: "#d4a853",
+  theme: "dark",
+  fontStyle: "serif",
+  layoutStyle: "grid",
+  logoUrl: null,
+  heroUrl: null,
+} as const;
 
 export async function resetDemoBusiness(db: Db): Promise<string> {
   let business = await db.business.findFirst({ where: { isDemo: true } });
@@ -17,11 +31,15 @@ export async function resetDemoBusiness(db: Db): Promise<string> {
   if (!business) {
     business = await db.business.create({
       data: {
-        name: DEMO_BUSINESS_NAME,
         slug: DEMO_SLUG,
         isDemo: true,
-        whatsapp: "573001234567",
+        ...DEMO_BUSINESS_STATE,
       },
+    });
+  } else {
+    await db.business.update({
+      where: { id: business.id },
+      data: DEMO_BUSINESS_STATE,
     });
   }
 

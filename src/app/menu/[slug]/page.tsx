@@ -10,12 +10,13 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await getMenuData(params.slug);
   if (!data) return { title: "Menú no encontrado" };
+  const description = data.business.tagline || `Descubra el menú de ${data.business.name}.`;
   return {
     title: `${data.business.name} — Menú digital`,
-    description: `Descubra el menú de ${data.business.name}.`,
+    description,
     openGraph: {
       title: `${data.business.name} — Menú digital`,
-      description: `Descubra el menú de ${data.business.name}.`,
+      description,
       images: data.business.heroUrl ? [{ url: data.business.heroUrl }] : [],
     },
   };

@@ -1,9 +1,6 @@
 import { prisma } from "../db";
-import type { MenuData, DishDTO } from "@/lib/types";
-
-const dishInclude = {
-  category: { select: { name: true } },
-} as const;
+import type { MenuData } from "@/lib/types";
+import { asMenuTheme, asMenuFont, asMenuLayout } from "@/lib/validations";
 
 export async function getMenuData(slug: string): Promise<MenuData | null> {
   const business = await prisma.business.findUnique({
@@ -15,6 +12,10 @@ export async function getMenuData(slug: string): Promise<MenuData | null> {
       heroUrl: true,
       whatsapp: true,
       accentColor: true,
+      theme: true,
+      fontStyle: true,
+      layoutStyle: true,
+      tagline: true,
     },
   });
 
@@ -45,7 +46,12 @@ export async function getMenuData(slug: string): Promise<MenuData | null> {
   });
 
   return {
-    business,
+    business: {
+      ...business,
+      theme: asMenuTheme(business.theme),
+      fontStyle: asMenuFont(business.fontStyle),
+      layoutStyle: asMenuLayout(business.layoutStyle),
+    },
     categories: categories.map((c) => ({
       id: c.id,
       name: c.name,
